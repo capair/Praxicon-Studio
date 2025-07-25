@@ -28,6 +28,8 @@ serve(async (req) => {
     const webhookUrl = Deno.env.get('DOCUMENT_PROCESSING_WEBHOOK_URL')
     const authHeader = Deno.env.get('NOTEBOOK_GENERATION_AUTH')
 
+    console.log('Webhook URL from environment:', webhookUrl);
+
     if (!webhookUrl) {
       console.error('Missing DOCUMENT_PROCESSING_WEBHOOK_URL environment variable')
       
@@ -45,6 +47,32 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({ error: 'Document processing webhook URL not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validate webhook URL format
+    if (webhookUrl.includes('//webhook/')) {
+      console.error('Malformed webhook URL detected:', webhookUrl);
+      console.error('The N8N base URL appears to be incorrectly configured. Please check the "Enter your n8n Base URL" field in the Import Insights LM Workflows.');
+      
+      // Initialize Supabase client to update status
+      const supabaseClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+
+      // Update source status to failed
+      await supabaseClient
+        .from('sources')
+        .update({ processing_status: 'failed' })
+        .eq('id', sourceId)
+
+      return new Response(
+        JSON.stringify({ 
+          error: 'Webhook URL is malformed. Please reconfigure the N8N base URL in the Import Insights LM Workflows and re-run it.',
+          details: 'The webhook URL contains "//webhook/" which indicates the N8N base URL is missing or incorrect.'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }

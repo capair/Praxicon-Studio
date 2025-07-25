@@ -166,6 +166,14 @@ export const useSources = (notebookId?: string) => {
               });
             } catch (error) {
               console.error('Failed to generate notebook content:', error);
+              
+              // Show more helpful error message to user
+              if (error instanceof Error) {
+                const errorMessage = error.message;
+                if (errorMessage.includes('malformed') || errorMessage.includes('//webhook/')) {
+                  console.error('Configuration error detected. Please check your N8N webhook URLs in Supabase secrets.');
+                }
+              }
             }
           } else {
             console.log('Source not ready for generation yet - missing required data');
@@ -220,6 +228,14 @@ export const useSources = (notebookId?: string) => {
               });
             } catch (error) {
               console.error('Failed to generate notebook content:', error);
+              
+              // Show more helpful error message to user
+              if (error instanceof Error) {
+                const errorMessage = error.message;
+                if (errorMessage.includes('malformed') || errorMessage.includes('//webhook/')) {
+                  console.error('Configuration error detected. Please check your N8N webhook URLs in Supabase secrets.');
+                }
+              }
             }
           }
         }

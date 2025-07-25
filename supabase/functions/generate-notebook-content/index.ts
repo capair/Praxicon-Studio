@@ -28,6 +28,8 @@ serve(async (req) => {
     const webServiceUrl = Deno.env.get('NOTEBOOK_GENERATION_URL')
     const authHeader = Deno.env.get('NOTEBOOK_GENERATION_AUTH')
 
+    console.log('Web service URL from environment:', webServiceUrl);
+
     if (!webServiceUrl || !authHeader) {
       console.error('Missing environment variables:', {
         hasUrl: !!webServiceUrl,
@@ -36,6 +38,26 @@ serve(async (req) => {
       
       return new Response(
         JSON.stringify({ error: 'Web service configuration missing' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Validate web service URL format
+    if (webServiceUrl.includes('//webhook/')) {
+      console.error('Malformed web service URL detected:', webServiceUrl);
+      console.error('The N8N base URL appears to be incorrectly configured. Please check the "Enter your n8n Base URL" field in the Import Insights LM Workflows.');
+      
+      // Update notebook status to failed
+      await supabaseClient
+        .from('notebooks')
+        .update({ generation_status: 'failed' })
+        .eq('id', notebookId)
+
+      return new Response(
+        JSON.stringify({ 
+          error: 'Web service URL is malformed. Please reconfigure the N8N base URL in the Import Insights LM Workflows and re-run it.',
+          details: 'The webhook URL contains "//webhook/" which indicates the N8N base URL is missing or incorrect.'
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
